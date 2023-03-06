@@ -13,7 +13,6 @@ import torch.nn.functional as F
 
 import scanpy as sc
 import pandas as pd
-
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -29,19 +28,13 @@ from torch_geometric.nn import TransformerConv
 
 
 import random
-from adan import Adan
-
-from torch.nn.parallel import DistributedDataParallel
-from torch_geometric.utils import negative_sampling
-from pytorch_metric_learning.losses import NTXentLoss
-from pytorch_metric_learning.losses import SelfSupervisedLoss
-
 from torch.nn.parallel import DistributedDataParallel
 from torch_geometric.utils import negative_sampling
 from pytorch_metric_learning.losses import NTXentLoss
 from pytorch_metric_learning.losses import SelfSupervisedLoss
 from pytorch_metric_learning import losses, reducers
 
+# store the name of files used in this task.
 tissue_list = { 
                "scrna_heart":['D4',
  'H2',
@@ -60,6 +53,7 @@ tissue_list = {
   "spatial_heart":['visium', 'visiumneighbor']
                }
 
+# Data structure used to store the information related to the graph.
 graph_list = []
 cor_list = []
 cor_dict = {}
@@ -95,7 +89,7 @@ for tissue in tissue_list.keys():
         
         count +=1
 
-
+# network construction: Dataset isolated GNN
 class GCNEncoder_Multiinput(torch.nn.Module):
     def __init__(self, out_channels, graph_list, label_list):
         super(GCNEncoder_Multiinput, self).__init__()
@@ -113,6 +107,7 @@ class GCNEncoder_Multiinput(torch.nn.Module):
         x = self.activ(x)
         return x
 
+# network construction: Tissue common GNN
 class GCNEncoder_Commoninput(torch.nn.Module):
     def __init__(self, out_channels, graph_list, label_list):
         super(GCNEncoder_Commoninput, self).__init__()
@@ -134,6 +129,7 @@ class GCNEncoder_Commoninput(torch.nn.Module):
         x = self.activ(x)
         return self.convl3[show_index.split('__')[0]](x, edge_index)
 
+# network construction: Dataset isolated MLP
 class MLP_edge_Decoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels, graph_list):
         super(MLP_edge_Decoder, self).__init__()
@@ -153,30 +149,29 @@ class MLP_edge_Decoder(torch.nn.Module):
         x = self.MLP[show_index](x)
         return x
 
-from torch_geometric.nn import DataParallel
-
+# Instantiating different neural networks
 gene_encoder_is = GCNEncoder_Multiinput(32, graph_list, label_list).to(device)
 gene_encoder_com = GCNEncoder_Commoninput(32, graph_list, label_list).to(device)
-
 gene_decoder = MLP_edge_Decoder(1000,1000,graph_list).to(device)
 
-
+# Create optimizer for different neural networks
 optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=1e-4)
 optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=1e-4)
-
 optimizer_dec2 = torch.optim.Adam(gene_decoder.parameters(), lr=1e-3)
 
+# Create loss functions for different neural networks.
 loss_f = nn.BCEWithLogitsLoss()
 loss_m = nn.CrossEntropyLoss()
 loss_func = SelfSupervisedLoss(NTXentLoss())
 
-
+# A helper function to calcualte the neighbor overlap.
 def find_neighbor_overlap(G1,G2, gene):
     G1_neg = list(G1.neighbors(gene))
     G2_neg = list(G2.neighbors(gene))
     overlap_score = len(set(G1_neg).intersection(set(G2_neg)))/len(set(G1_neg).union(set(G2_neg)))
     return overlap_score
 
+# Calculate neighbor overlap
 common_gene_set ={}
 common_gene_overlap = {}
 for i in range(0,len(graph_list)):
@@ -198,8 +193,7 @@ for i in range(0,len(graph_list)):
                 value_list.append(find_neighbor_overlap(G1,G2, item))
         common_gene_overlap[graph.show_index + graph_new.show_index] = value_list
             
-        
-        
+# Calculate the set for different genes.   
 diff_gene_set ={}
 for i in range(0,len(graph_list)):
     graph = graph_list[i]
@@ -209,6 +203,7 @@ for i in range(0,len(graph_list)):
         index_j = graph_new.gene_list.get_indexer(set(graph_new.gene_list) - set(graph.gene_list))
         diff_gene_set[graph.show_index + graph_new.show_index] = [index_i, index_j]
 
+# A function used for regularization, including similarity learning and contrastive learning
 lambda_infonce = 0.01
 def penalize_data(z, graph_list,Z,i,j):
     loss = 0.
@@ -237,7 +232,7 @@ def penalize_data(z, graph_list,Z,i,j):
         
     return loss
 
-# Contrastive learning
+# Start the training process
 graph_index_list = [item for item in range(0 , len(graph_list))]
 
 for epoch in range(2000):
@@ -284,6 +279,7 @@ for epoch in range(2000):
         
     print("epoch finish")
 
+# Store the gene embeddings
 emb_list = []
 gene_list = []
 tissue_list = []
@@ -302,19 +298,15 @@ with torch.no_grad():
         gene_list.append(graph.gene_list)
         tissue_list.append([graph.show_index for j in range(len(x))])
 
-
+# Post-processing
 adata = sc.AnnData(np.concatenate(emb_list))
-
-
 adata.obs['gene'] = np.concatenate(gene_list)
 adata.obs['tissue'] = np.concatenate(tissue_list)
-
-
 sc.pp.neighbors(adata, use_rep='X')
 sc.tl.umap(adata)
-
 sc.tl.leiden(adata, resolution=3) # 3 means we have three types of techiniques 
 
 adata.obs['tissue_new'] = [i.split("__")[0] for i in adata.obs['tissue']]
 
+# Write the gene embeddings into a file with .h5ad format.
 adata.write_h5ad("/ysm-gpfs/pi/zhao/tl688/GIANT/GIANT/src/analysis/multi_folder/umi_SWMGNN_alltissue_withpancreas_neighborspatial_infoNCE_sample_2000.h5ad")

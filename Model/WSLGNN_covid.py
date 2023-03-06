@@ -1,3 +1,6 @@
+'''
+For the details of different functions, please check the WSLGNN_all_tissues.py
+'''
 import numpy as np
 import torch
 import torch_geometric.nn

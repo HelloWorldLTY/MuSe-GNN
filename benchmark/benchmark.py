@@ -5,9 +5,13 @@ import networkx as nx
 
 import scib
 
-# for specific encoder/decoder
+from sklearn.preprocessing import normalize
+from sklearn.metrics import roc_auc_score
 
 
+
+
+# dataset name list, which can be modified based on your own dataset
 tissue_list = { 
                "scrna_heart":['D4',
  'H2',
@@ -26,8 +30,7 @@ tissue_list = {
  'G19'], 
 }
 
-# construct graph batch
-# based on simulation results
+# construct graph batch based on simulation results
 graph_list = []
 cor_list = {}
 label_list = [] 
@@ -46,9 +49,11 @@ for tissue in tissue_list.keys():
         
         count +=1
 
+# sigmoid function
 def sigmoid(x):
     return 1/(1 + np.exp(-x))
 
+# metric 1: Calculate gene ASW
 def calculate_common_asw(adata):
     tissue_list = []
     for i in list(set(adata.obs['tissue'])):
@@ -63,22 +68,23 @@ def calculate_common_asw(adata):
     return result    
 
 
-
-from sklearn.metrics import roc_auc_score
+# metric 2: Calculate normalized AUC
 def calculate_AUC(adata, cor_list):
     tissue_list = list(set(cor_list.keys()))
     
     result = 0
     for i in tissue_list:
         adata_new = adata[adata.obs['tissue'] == i]
-        rec_matrix = sigmoid(adata_new.X@adata_new.X.T).flatten()
+
+        normed_matrix = normalize(adata_new.X, axis=1)
+        rec_matrix = sigmoid(normed_matrix@normed_matrix.T).flatten()
         cor_matrix = cor_list[i].values.flatten()
         result += roc_auc_score(cor_matrix, rec_matrix)
     
     result = result/len(tissue_list)
     return result    
 
-
+# metric 3: Calculate gene LISI
 def calculate_iLISI(adata):
     tissue_list = []
     for i in list(set(adata.obs['tissue'])):
@@ -92,8 +98,7 @@ def calculate_iLISI(adata):
     
     return result   
 
-
-
+# metric 4: Calculate gene GC
 def calculate_graph_connectivity(adata):
     tissue_list = []
     for i in list(set(adata.obs['tissue'])):
@@ -108,6 +113,7 @@ def calculate_graph_connectivity(adata):
     
     return result    
 
+# metric 5: Calculate commom gene propertion
 def calculate_common_gene_propertion(adata):
     full_score = 0
     for i in list(set(adata.obs['leiden'])):
@@ -122,6 +128,7 @@ def calculate_common_gene_propertion(adata):
         
     return full_score
 
+# metric 6: Calculate cluster propertion
 def calculate_common_gene_cluster_propertion(adata):
     tissue_list = []
     for i in list(set(adata.obs['tissue'])):
@@ -133,20 +140,7 @@ def calculate_common_gene_cluster_propertion(adata):
     result = len(set(adata_new.obs['leiden']))/len(set(adata.obs['leiden']))
     return result
 
-def calculate_metric(adata, cor_list):
-    asw = calculate_common_asw(adata)
-    AUC = calculate_AUC(adata, cor_list)
-    ilisi = calculate_iLISI(adata)
-    gc = calculate_graph_connectivity(adata)
-    
-    percp = calculate_common_gene_cluster_propertion(adata)
-    
-    ratio = calculate_common_gene_propertion(adata)
-    
-    df = pd.DataFrame(np.array([asw,AUC,ilisi,gc,percp,ratio]))
-    df.index = ['ASW', 'AUC', 'iLISI', 'GC','Common Prop cluster','Common ratio']
-    return df
-
+# Helper function: Jaccard score for genes in different graphs.
 def calculate_overlap(G1,G2,g1,g2):
     G1_neg = list(G1.neighbors(g1))
     G2_neg = list(G2.neighbors(g2))
@@ -155,10 +149,7 @@ def calculate_overlap(G1,G2,g1,g2):
     
     return overlap_score
 
-graph_list = {}
-for i in cor_list.keys():
-    graph_list[i] = nx.from_pandas_adjacency(cor_list[i])
-
+# metric 7: Calculate neighbor genes' overlap
 def calculate_common_neighbor_ovarlap(adata, cor_list):
     output_value = 0
     for i in list(set(adata.obs['leiden'])):
@@ -189,12 +180,31 @@ def calculate_common_neighbor_ovarlap(adata, cor_list):
         output_value += overlap_value*len(adata_new)/len(adata)
         
     return output_value
-        
 
-# new loss
-adata = sc.read_h5ad("heart_global/heart_umi_SWMGNN_cossim_infoNCE.h5ad")
+# Integrated function for metric calculation
+def calculate_metric(adata, cor_list):
+    asw = calculate_common_asw(adata)
+    AUC = calculate_AUC(adata, cor_list)
+    ilisi = calculate_iLISI(adata)
+    gc = calculate_graph_connectivity(adata)
+    
+    percp = calculate_common_gene_cluster_propertion(adata)
+    
+    ratio = calculate_common_gene_propertion(adata)
+    
+    ovl = calculate_common_neighbor_ovarlap(adata, cor_list)
+    
+    df = pd.DataFrame(np.array([asw,AUC,ilisi,gc,percp,ratio, ovl]))
+    df.index = ['ASW', 'AUC', 'iLISI', 'GC','Common Prop cluster','Common ratio', 'share overlap']
+    print(df)
+    return df
 
-print(calculate_metric(adata, cor_list))
+# run the benchmark process
+graph_list = {}
+for i in cor_list.keys():
+    graph_list[i] = nx.from_pandas_adjacency(cor_list[i])
 
-print(calculate_common_neighbor_ovarlap(adata, cor_list))
+seed = 0
+adata = sc.read_h5ad(f"wslgnn_benchmark/heart_umi_wslgnn_2000_recongene_{seed}.h5ad")
+calculate_metric(adata, cor_list)
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+# The codes here need rpy2.
 
 # In[1]:
 
@@ -41,28 +42,22 @@ get_ipython().run_cell_magic('R', '', 'library(Seurat)\nlibrary(sctransform)\nli
 
 # In[4]:
 
-
+# load one dataset in python
 adata = sc.read_h5ad(f"heart_atlas/scrna_heart_D5.h5ad")
 
 
 # In[5]:
 
-
+# reorder the dataset and import the dataset into R environment.
 if issparse(adata.X):
     if not adata.X.has_sorted_indices:
         adata.X.sort_indices()
 ro.globalenv["adata"] = adata
 
 
-# In[6]:
-
-
-adata
-
-
 # In[7]:
 
-
+# Run sctransform and select highly variable genes.
 get_ipython().run_cell_magic('R', '', 'seurat_obj = as.Seurat(adata, counts="X", assay = "RNA", data = NULL)\nseurat_obj = RenameAssays(seurat_obj, originalexp = "RNA")\nres = SCTransform(object=seurat_obj, vst.flavor = "v2", variable.features.n = 1000 , method = "glmGamPoi", verbose = FALSE)\n')
 
 
@@ -80,7 +75,7 @@ adata.var_names
 
 # In[28]:
 
-
+# store the Pearson residuals
 gene_list = list(ro.r("rownames(res@assays$SCT@scale.data)"))
 norm_x = ro.r("res@assays$SCT@scale.data")
 exp_matrix = pd.DataFrame(norm_x, index=gene_list)
@@ -90,35 +85,6 @@ exp_matrix = pd.DataFrame(norm_x, index=gene_list)
 
 
 exp_matrix
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[2]:
-
-
 adata = sc.read_h5ad("realdata_sctransform/scrna_heart_global.h5ad")
 
 
