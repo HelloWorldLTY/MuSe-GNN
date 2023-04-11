@@ -18,10 +18,10 @@ This folder contrains the codes we used to generate graph structure data, which 
 
 This folder contains three .py files. WSLGNN_heart.py represents the gene embeddings generation process for human heart scRNA-seq data. WSLGNN_covid.py represents the gene embeddings generation process for human pancreas dataset with/without COVID. WSLGNN_all_tissue.py represents the gene embeddings generation process for multimodal biological data.
 
-To run the codes, please use:
+To run the codes, after finishing the preprocessing and preparation steps, please use:
 
 ```
-python WSLGNN heart.py
+python TRIANGLE_heart.py
 ```
 
 ## Benchmark
