@@ -198,7 +198,7 @@ print("start training")
 loss_f = nn.BCEWithLogitsLoss()
 loss_m = nn.CrossEntropyLoss()
 from pytorch_metric_learning import losses
-loss_func = SelfSupervisedLoss(NTXentLoss())
+loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss())
 
 lambda_infonce = 0.01
 def penalize_data(z, graph_list,i,j):
