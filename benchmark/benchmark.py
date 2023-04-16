@@ -204,6 +204,7 @@ graph_list = {}
 for i in cor_list.keys():
     graph_list[i] = nx.from_pandas_adjacency(cor_list[i])
 
+# run the benchmark
 seed = 0
 adata = sc.read_h5ad(f"wslgnn_benchmark/heart_umi_wslgnn_2000_recongene_{seed}.h5ad")
 calculate_metric(adata, cor_list)
