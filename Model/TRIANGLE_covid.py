@@ -4,17 +4,12 @@ For the details of different functions, please check the WSLGNN_all_tissues.py
 import numpy as np
 import torch
 import torch_geometric.nn
-import torch_geometric.datasets as datasets
 import torch_geometric.data as data
 import networkx as nx
 import torch.nn as nn
-import torch.nn.functional as F
 
 import scanpy as sc
 import pandas as pd
-
-import seaborn as sns
-import matplotlib.pyplot as plt
 import random
 
 import matplotlib.pyplot as plt
@@ -24,14 +19,13 @@ def sigmoid(x):
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-import pickle
+
 
 from torch_geometric.nn import TransformerConv
 
 
 import torch.distributed as dist
 
-from torch.nn.parallel import DistributedDataParallel
 from torch_geometric.utils import negative_sampling
 from pytorch_metric_learning.losses import NTXentLoss
 from pytorch_metric_learning.losses import SelfSupervisedLoss

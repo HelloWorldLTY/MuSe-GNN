@@ -9,14 +9,10 @@ from torch_geometric.utils.convert import to_networkx
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import scanpy as sc
 import pandas as pd
-
-import seaborn as sns
-import matplotlib.pyplot as plt
 import random
-import pickle
+
 
 from torch_geometric.nn import TransformerConv
 import os

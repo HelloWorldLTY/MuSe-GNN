@@ -27,7 +27,3 @@ python TRIANGLE_heart.py
 ## Benchmark
 
 This folder includes the benchmark functions we used for our model. Please check benchmark heart datasets.ipynb as a simple tutorial.
-
-## Contact
-
-If you have any questions, please post them in the issues of this repo or email: tianyu.liu@yale.edu

@@ -13,10 +13,7 @@ import torch.nn.functional as F
 import scanpy as sc
 import pandas as pd
 
-import seaborn as sns
-import matplotlib.pyplot as plt
 import random
-import pickle
 
 from torch_geometric.nn import TransformerConv
 import os
@@ -39,24 +36,24 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # all tissue datasets list
 tissue_list = { 
                "scrna_heart":['D4',
- 'H2',
- 'H3',
- 'D6',
- 'D2',
- 'H7',
+    'H2',
+    'H3',
+    'D6',
+    'D2',
+    'H7',
 ], 
     "scatac_heart":['674', '328', '864', 'b1', 'b2'],
     "spatial_heart":['visiumse'],
     "scrna_lung":["BAL034", "A44-LNG-2-SC-45N-1","ND17494","BAL027","BT1294"],
     "scatac_lung":['b1'],
     "scrna_kidney":["b1", "b2"],
-    "scatac_kidney":['b1'],
+    "scatac_kidney":['b1', '243'],
     "scrna_liver":["A31", "A29", "A35", "A36", "A52", "640C", "637C"],
     "scatac_liver":['b1'],
     "scrna_thymus":["A31", 'b5'],
     "scatac_thymus":["b1"],
     "scrna_pbmcHealthy":[ 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'],
-    "scrna_pancreas":['2017'],
+    "scrna_pancreas":['2017', 'bTop3'],
     "scatac_pancreas":['b3'],
     "scrna_spleen":["A52", "640C", "A36", "A31", "A29", "637C"],
     "scatac_spleen":['b3'],
