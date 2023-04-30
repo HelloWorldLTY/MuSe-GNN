@@ -27,3 +27,7 @@ python TRIANGLE_heart.py
 ## Benchmark
 
 This folder includes the benchmark functions we used for our model. Please check benchmark heart datasets.ipynb as a simple tutorial.
+
+## Benchmark
+
+This folder includes codes for performing biological analysis, including enrichment pathway discovery, ploting tissue specific enrichment bubble plots and ploting the number of shared TFs in each combination.
