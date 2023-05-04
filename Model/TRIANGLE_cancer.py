@@ -192,9 +192,10 @@ from pytorch_metric_learning import losses
 loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss())
 
 lambda_infonce = 0.01
-def penalize_data(z, graph_list,i,j):
-    loss = 0.
+def penalize_data(z, graph_list,j):
+    loss = torch.tensor(0.).to(device)
     graph_new = graph_list[j]
+
     x = graph_new.x.to(device)
     train_pos_edge_index = graph_new.edge_index.to(device)
     
@@ -202,13 +203,21 @@ def penalize_data(z, graph_list,i,j):
     z_new = gene_encoder_com(x, train_pos_edge_index, graph_new.show_index)
 
     [index_i, index_j] = common_gene_set[graph.show_index + graph_new.show_index]
+    if (len(index_i) ==0) or (len(index_j) == 0):
+        return loss
     
     z_cor = z[index_i]
     z_new_cor = z_new[index_j]
     
     weight = torch.FloatTensor(common_gene_overlap[graph.show_index + graph_new.show_index]).to(device)
+    cos_sim = torch.cosine_similarity(z_cor, z_new_cor, axis = 1)*weight
+
+    loss += -cos_sim.mean()
     
     [index_i, index_j] = diff_gene_set[graph.show_index + graph_new.show_index]
+
+    if (len(index_i) ==0) or (len(index_j) == 0):
+        return loss
     
     opt_index = np.random.choice([i for i in range(len(index_i))], min(100, len(index_i)))
     
@@ -221,8 +230,8 @@ def penalize_data(z, graph_list,i,j):
     z_new_diff_true = z_new[index_j[opt_index]]
     
     cos_sim = torch.cosine_similarity(z_cor, z_new_cor, axis = 1)*weight
-    
-    loss += -cos_sim.mean() + lambda_infonce * loss_func(torch.cat((z_diff,z_new_diff)), torch.cat((z_diff_true,z_new_diff_true)))
+
+    loss += lambda_infonce * loss_func(torch.cat((z_diff,z_new_diff)), torch.cat((z_diff_true,z_new_diff_true)))
     return loss
 
 
@@ -261,7 +270,7 @@ for epoch in range(2000):
         graph_index_list_copy.remove(i)
 
         j = random.sample(graph_index_list_copy, 1)
-        loss += penalize_data(z, graph_list,i,j[0]) 
+        loss += penalize_data(z, graph_list,j[0]) 
 
         del graph
         loss.backward()
