@@ -16,7 +16,7 @@ This folder contrains the codes we used to generate graph structure data, which 
 
 ## Model
 
-This folder contains three .py files. TRIANGLE_heart.py represents the gene embeddings generation process for human heart scRNA-seq data. TRIANGLE_covid.py represents the gene embeddings generation process for human pancreas dataset with/without COVID. TRIANGLE_all_tissues.pyrepresents the gene embeddings generation process for multimodal biological data.
+This folder contains three .py files. MuSeGNN_heart.py represents the gene embeddings generation process for human heart scRNA-seq data. MuSeGNN_covid.py represents the gene embeddings generation process for human pancreas dataset with/without COVID. MuSeGNN_all_tissues.py represents the gene embeddings generation process for multimodal biological data.
 
 To run the example codes, after finishing the preprocessing and preparation steps, please use:
 
