@@ -21,7 +21,7 @@ This folder contains three .py files. MuSeGNN_heart.py represents the gene embed
 To run the example codes, after finishing the preprocessing and preparation steps, please use:
 
 ```
-python TRIANGLE_heart.py
+python MuSeGNN_heart.py
 ```
 
 ## Benchmark
