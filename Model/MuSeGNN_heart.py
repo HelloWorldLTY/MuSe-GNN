@@ -276,8 +276,6 @@ def penalize_data(z, graph_list,j):
     z_diff_true =  z[index_i[opt_index]]
     z_new_diff_true = z_new[index_j[opt_index]]
     
-    cos_sim = torch.cosine_similarity(z_cor, z_new_cor, axis = 1)*weight
-
     loss += lambda_infonce * loss_func(torch.cat((z_diff,z_new_diff)), torch.cat((z_diff_true,z_new_diff_true)))
     return loss
 

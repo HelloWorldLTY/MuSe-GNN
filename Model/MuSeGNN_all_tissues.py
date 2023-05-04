@@ -234,6 +234,7 @@ def penalize_data(z, graph_list,j):
     z_new = gene_encoder_com(x, train_pos_edge_index, graph_new.show_index)
 
     [index_i, index_j] = common_gene_set[graph.show_index + graph_new.show_index]
+    
     if (len(index_i) ==0) or (len(index_j) == 0):
         return loss
     
@@ -260,8 +261,6 @@ def penalize_data(z, graph_list,j):
     z_diff_true =  z[index_i[opt_index]]
     z_new_diff_true = z_new[index_j[opt_index]]
     
-    cos_sim = torch.cosine_similarity(z_cor, z_new_cor, axis = 1)*weight
-
     loss += lambda_infonce * loss_func(torch.cat((z_diff,z_new_diff)), torch.cat((z_diff_true,z_new_diff_true)))
     return loss
 
