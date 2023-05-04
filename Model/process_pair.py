@@ -4,7 +4,7 @@ from concurrent.futures import ProcessPoolExecutor,as_completed
 from multiprocessing import cpu_count
 
 
-
+# define a function to calculate the neighborhood overlap of two genes
 eps = 1e-8
 def find_neighbor_overlap(G1,G2, gene1, gene2):
     G1_neg = set(G1.neighbors(gene1))
@@ -12,6 +12,7 @@ def find_neighbor_overlap(G1,G2, gene1, gene2):
     overlap_score = len(G1_neg & G2_neg) / (len(G1_neg | G2_neg) + eps)
     return overlap_score
 
+# Find all the weights for each gene from two graphs.
 def process_pair(i, j, graph_list, graph_networkx_list):
     graph = graph_list[i]
     G1 = graph_networkx_list[i]

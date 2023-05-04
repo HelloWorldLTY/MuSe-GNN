@@ -28,6 +28,6 @@ python TRIANGLE_heart.py
 
 This folder includes the benchmark functions we used for our model. Please check benchmark heart datasets.ipynb as a simple tutorial.
 
-## Contact
+## Analysis
 
-If you have any questions, please post them in the issues of this repo or email: tianyu.liu@yale.edu
+This folder includes codes for performing biological analysis, including enrichment pathway discovery, ploting tissue specific enrichment bubble plots and ploting the number of shared TFs in each combination.

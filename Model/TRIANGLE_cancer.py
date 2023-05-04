@@ -1,70 +1,45 @@
-'''
-For the details of different functions, please check the TRIANGLE_all_tissues.py
-'''
+
 import numpy as np
+import torch
 import torch_geometric.nn
 import torch_geometric.data as data
 import networkx as nx
-from torch_geometric.utils.convert import to_networkx
-
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
 import scanpy as sc
 import pandas as pd
-
 import random
 
-from torch_geometric.nn import TransformerConv
-import os
+import matplotlib.pyplot as plt
 
 def sigmoid(x):
     return 1/(1+np.exp(-x))
 
-def set_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ['PYTHONHASHEED'] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-#set_seed(0)
 
-# all tissue datasets list
+
+
+from torch_geometric.nn import TransformerConv
+
+
+import torch.distributed as dist
+
+from torch_geometric.utils import negative_sampling
+from pytorch_metric_learning.losses import NTXentLoss
+from pytorch_metric_learning.losses import SelfSupervisedLoss
+
+
+# List dataset names
+
 tissue_list = { 
-               "scrna_heart":['D4',
-    'H2',
-    'H3',
-    'D6',
-    'D2',
-    'H7',
-], 
-    "scatac_heart":['674', '328', '864', 'b1', 'b2'],
-    "spatial_heart":['visiumse'],
-    "scrna_lung":["BAL034", "A44-LNG-2-SC-45N-1","ND17494","BAL027","BT1294"],
-    "scatac_lung":['b1'],
-    "scrna_kidney":["b1", "b2"],
-    "scatac_kidney":['b1', '243'],
-    "scrna_liver":["A31", "A29", "A35", "A36", "A52", "640C", "637C"],
-    "scatac_liver":['b1'],
-    "scrna_thymus":["A31", 'b5'],
-    "scatac_thymus":["b1"],
-    "scrna_pbmcHealthy":[ 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'],
-    "scrna_pancreas":['2017', 'bTop3'],
-    "scatac_pancreas":['b3'],
-    "scrna_spleen":["A52", "640C", "A36", "A31", "A29", "637C"],
-    "scatac_spleen":['b3'],
-    "scrna_cerebellum":['b2', 'b4', 'b6', 'b10'], 
-    "scatac_cerebellum":['b3'], 
-    "scrna_cerebrum":['b1', 'b7', 'b8', 'b9'],
-    "scatac_cerebrum":['b1', 'b2', 'b3'],
-    "spatial_cerebrum":['rongse'],
+               "scrna_lunghealth":['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'
+               ], 
+               "scrna_lungtumor":['p1', 'p2', 'p3']
                }
 
-# Load training datasets
+
+# construct graph batch
+# based on simulation results
 graph_list = []
 cor_list = []
 label_list = []
@@ -74,8 +49,8 @@ count = 0
 for tissue in tissue_list.keys():
     for i in tissue_list[tissue]:
         print(i)
-        pathway_count = f"./{tissue.split('_')[1]}_atlas/{tissue}_" + i + "_rna_expression" + ".csv"
-        pathway_matrix = f"./{tissue.split('_')[1]}_atlas/{tissue}_" + i + "_pvalue" + ".csv"
+        pathway_count = f"./cancer_atlas/{tissue}_" + i + "_rna_expression" + ".csv"
+        pathway_matrix = f"./cancer_atlas/{tissue}_" + i + "_pvalue" + ".csv"
 
         pd_adata_new =  pd.read_csv(pathway_count, index_col=0)
         correlation = pd.read_csv(pathway_matrix, index_col=0)
@@ -100,7 +75,7 @@ for tissue in tissue_list.keys():
         
         count +=1
 
-# Define model structure
+
 class GCNEncoder_Multiinput(torch.nn.Module):
     def __init__(self, out_channels, graph_list, label_list):
         super(GCNEncoder_Multiinput, self).__init__()
@@ -144,7 +119,7 @@ class GCNEncoder_Commoninput(torch.nn.Module):
         x = self.convl2[show_index.split('__')[0]](x, edge_index)
         x = self.activ(x)
         x = self.convl3[show_index.split('__')[0]](x, edge_index)
-        return x + self.convl4[show_index.split('__')[0]](x_inp, edge_index) # residual link
+        return x + self.convl4[show_index.split('__')[0]](x_inp, edge_index)
 
 class MLP_edge_Decoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels, graph_list):
@@ -170,23 +145,19 @@ class MLP_edge_Decoder(torch.nn.Module):
 
 gene_encoder_is = GCNEncoder_Multiinput(32, graph_list, label_list).to(device)
 gene_encoder_com =  GCNEncoder_Commoninput(32, graph_list, label_list).to(device)
-
 gene_decoder = MLP_edge_Decoder(1000,1000,graph_list).to(device)
 
 optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=1e-4)
 optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=1e-4)
-
 optimizer_dec2 = torch.optim.Adam(gene_decoder.parameters(), lr=1e-3)
 
-# define packages for multi-threading process
 import numpy as np
 import networkx as nx
-from concurrent.futures import as_completed, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor,as_completed, ThreadPoolExecutor
 from multiprocessing import cpu_count
 
 import process_pair
 
-# define functions to calculate weights for similarity learning
 def compute_gene_sets(graph_list, graph_networkx_list, num_threads=cpu_count()):
     common_gene_set = {}
     common_gene_overlap = {}
@@ -221,8 +192,6 @@ from pytorch_metric_learning import losses
 loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss())
 
 lambda_infonce = 0.01
-
-#specific regularization process
 def penalize_data(z, graph_list,i,j):
     loss = 0.
     graph_new = graph_list[j]
@@ -263,7 +232,6 @@ gene_encoder_com.train()
 graph_index_list = [item for item in range(0, len(graph_list))]
 edge_adj_list = [torch.FloatTensor(cor_list[i].values).to(device) for i in graph_index_list]
 
-# start training
 for epoch in range(2000):
     loss = 0.
     for i in range(0,len(graph_index_list)):
@@ -348,6 +316,4 @@ sc.tl.leiden(adata)
 
 adata.obs['tissue_new'] = [i.split("__")[0] for i in adata.obs['tissue']]
 
-
-# Output gene embeddings
-adata.write_h5ad("heart_global/all_umi_TRIANGLE.h5ad")
+adata.write_h5ad("heart_global/heart_umi_TRIANGLE.h5ad")

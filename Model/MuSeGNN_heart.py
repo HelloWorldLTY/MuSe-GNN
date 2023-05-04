@@ -9,14 +9,11 @@ from torch_geometric.utils.convert import to_networkx
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import scanpy as sc
 import pandas as pd
-
-import seaborn as sns
-import matplotlib.pyplot as plt
 import random
-import pickle
+import argparse
+
 
 from torch_geometric.nn import TransformerConv
 import os
@@ -33,12 +30,38 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Run encoder')
+
+    parser.add_argument('--epoches', type=int, default=2000,
+                        help='number of epoches')
+    parser.add_argument('--lambdac', type=float, default=0.01,
+                        help='weight for the contrastive learning') 
+    parser.add_argument('--lr1', type=float, default=1e-4,
+                        help='lr for encoder')     
+    parser.add_argument('--lr2', type=float, default=1e-3,
+                        help='lr for decoder')
+    parser.add_argument('--temp', type=float, default=0.07,
+                        help='temperature for the contrastive learning') 
+    parser.add_argument('--samplesize', type=int, default=100,
+                        help='sample size for contrastive learning')
+    parser.add_argument('--dim', type=float, default=32,
+                        help='latent dimensions') 
+    parser.add_argument('--savepath', type=str, default="heart_global/heart_umi_TRIANGLE.h5ad",
+                        help='save path') 
+    
+    
+    return parser.parse_args()
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 #set_seed(0)
 
 # # for specific encoder/decoder
 # # tissue_list = { 
 # #                "heart":[233, 676, 783, 947,266, 223, 233, 978, 928, 852, 839, 733]}
+
+args = parse_args()
 
 tissue_list = { 
                "scrna_heart":['D4',
@@ -165,15 +188,15 @@ class MLP_edge_Decoder(torch.nn.Module):
         return x
 
 
-gene_encoder_is = GCNEncoder_Multiinput(32, graph_list, label_list).to(device)
-gene_encoder_com =  GCNEncoder_Commoninput(32, graph_list, label_list).to(device)
+gene_encoder_is = GCNEncoder_Multiinput(args.dim, graph_list, label_list).to(device)
+gene_encoder_com =  GCNEncoder_Commoninput(args.dim, graph_list, label_list).to(device)
 
 gene_decoder = MLP_edge_Decoder(1000,1000,graph_list).to(device)
 
-optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=1e-4)
-optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=1e-4)
+optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=args.lr1)
+optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=args.lr1)
 
-optimizer_dec2 = torch.optim.Adam(gene_decoder.parameters(), lr=1e-3)
+optimizer_dec2 = torch.optim.Adam(gene_decoder.parameters(), lr=args.lr2)
 
 import numpy as np
 import networkx as nx
@@ -213,9 +236,9 @@ print("start training")
 loss_f = nn.BCEWithLogitsLoss()
 loss_m = nn.CrossEntropyLoss()
 from pytorch_metric_learning import losses
-loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss())
+loss_func = losses.SelfSupervisedLoss(losses.NTXentLoss(temperature = args.temp))
 
-lambda_infonce = 0.01
+lambda_infonce = args.lambdac
 def penalize_data(z, graph_list,i,j):
     loss = 0.
     graph_new = graph_list[j]
@@ -234,7 +257,7 @@ def penalize_data(z, graph_list,i,j):
     
     [index_i, index_j] = diff_gene_set[graph.show_index + graph_new.show_index]
     
-    opt_index = np.random.choice([i for i in range(len(index_i))], min(200, len(index_i)))
+    opt_index = np.random.choice([i for i in range(len(index_i))], min(args.samplesize, len(index_i)))
     
     z_diff = z[index_i[opt_index]]
     z_new_diff = z_new[index_j[opt_index]]
@@ -256,7 +279,7 @@ gene_encoder_com.train()
 graph_index_list = [item for item in range(0, len(graph_list))]
 edge_adj_list = [torch.FloatTensor(cor_list[i].values).to(device) for i in graph_index_list]
 
-for epoch in range(2000):
+for epoch in range(args.epoches):
     loss = 0.
     for i in range(0,len(graph_index_list)):
         
@@ -340,4 +363,4 @@ sc.tl.leiden(adata)
 
 adata.obs['tissue_new'] = [i.split("__")[0] for i in adata.obs['tissue']]
 
-adata.write_h5ad("heart_global/heart_umi_TRIANGLE.h5ad")
+adata.write_h5ad(args.savepath)
