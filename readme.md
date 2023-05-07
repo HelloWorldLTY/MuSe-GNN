@@ -26,7 +26,7 @@ python MuSeGNN_heart.py
 
 ## Benchmark
 
-This folder includes the benchmark functions we used for our model. Please check benchmark heart datasets.ipynb as a simple tutorial.
+This folder includes the benchmark metrics and baseline models we used for our this paper. Please check benchmark metrics.py as a simple tutorial.
 
 ## Analysis
 
