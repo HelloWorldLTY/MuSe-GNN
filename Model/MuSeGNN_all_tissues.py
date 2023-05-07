@@ -64,6 +64,51 @@ tissue_list = {
     "spatial_cerebrum":['rongse'],
                }
 
+# tissue_list = { 
+#                "scrna_heart":['D4',
+#     'H2',
+#     'H3',
+#     'D6',
+#     'D2',
+#     'H7',
+#     'lemurl2',
+#     'lemurl3',
+#     'lemurl4',
+#     'mousep7'
+# ], 
+#     "scatac_heart":['674', '328', '864', 'b1', 'b2'],
+#     "spatial_heart":['visiumse'],
+#     "scrna_lung":["BAL034", "A44-LNG-2-SC-45N-1","ND17494","BAL027","BT1294"
+#                   , "lemurl1" , "lemurl2" , "lemurl3" , "lemurl4"],
+#     "scatac_lung":['b1'],
+#     "scrna_kidney":["b1", "b2", 'lemurl2',
+#     'lemurl3',
+#     'lemurl4',
+#     'mousep7'],
+
+#     "scatac_kidney":['b1', '243'],
+#     "scrna_liver":["A31", "A29", "A35", "A36", "A52", "640C", "637C",
+#                    'lemurl3','lemurl2','mousep7'],
+#     "scatac_liver":['b1'],
+#     "scrna_thymus":["A31", 'b5', "mousep7" ],
+#     "scatac_thymus":["b1"],
+#     "scrna_pbmcHealthy":[ 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'],
+#     "scrna_pancreas":['2017', 'bTop3'],
+#     "scatac_pancreas":['b3'],
+#     "scrna_spleen":["A52", "640C", "A36", "A31", "A29", "637C",
+#                     'lemurl2',
+#     'lemurl3',
+#     'lemurl4',
+#     'mousep7'],
+    
+#     "scatac_spleen":['b3'],
+#     "scrna_cerebellum":['b2', 'b4', 'b6', 'b10'], 
+#     "scatac_cerebellum":['b3'], 
+#     "scrna_cerebrum":['b1', 'b7', 'b8', 'b9'],
+#     "scatac_cerebrum":['b1', 'b2', 'b3'],
+#     "spatial_cerebrum":['rongse'],
+#                }
+
 # Load training datasets
 graph_list = []
 cor_list = []
@@ -359,4 +404,4 @@ adata.obs['tissue_new'] = [i.split("__")[0] for i in adata.obs['tissue']]
 
 
 # Output gene embeddings
-adata.write_h5ad("heart_global/all_umi_TRIANGLE.h5ad")
+adata.write_h5ad("heart_global/all_umi_musegnn.h5ad")

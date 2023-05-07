@@ -48,7 +48,7 @@ def parse_args():
                         help='sample size for contrastive learning')
     parser.add_argument('--dim', type=float, default=32,
                         help='latent dimensions') 
-    parser.add_argument('--savepath', type=str, default="heart_global/heart_umi_TRIANGLE.h5ad",
+    parser.add_argument('--savepath', type=str, default="heart_global/heart_umi_musegnn.h5ad",
                         help='save path') 
     
     

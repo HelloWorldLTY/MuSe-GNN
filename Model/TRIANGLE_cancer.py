@@ -325,4 +325,4 @@ sc.tl.leiden(adata)
 
 adata.obs['tissue_new'] = [i.split("__")[0] for i in adata.obs['tissue']]
 
-adata.write_h5ad("heart_global/heart_umi_TRIANGLE.h5ad")
+adata.write_h5ad("heart_global/heart_umi_musegnn.h5ad")
