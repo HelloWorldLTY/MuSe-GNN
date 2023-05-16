@@ -1,18 +1,16 @@
 import numpy as np
+import torch_geometric.nn
 import torch_geometric.data as data
 import networkx as nx
 from torch_geometric.utils.convert import to_networkx
+
 import torch
 import torch.nn as nn
 import scanpy as sc
 import pandas as pd
 
-from torch_geometric.nn import TransformerConv
-from torch_geometric.nn import GATConv
-from pytorch_metric_learning.losses import SelfSupervisedLoss
-import os
 
-import argparse
+
 
 import random
 def sigmoid(x):
@@ -29,10 +27,48 @@ def generate_masked_data(data, prop=0.25):
     
     return data
 
+import pickle
+
+from torch_geometric.nn import TransformerConv
+from torch_geometric.nn import GATConv
+from pytorch_metric_learning.losses import SelfSupervisedLoss
+import os
+
+import argparse
+from pytorch_metric_learning import losses
+
+import torch
+from torch.nn import Module, Linear
+from GPSConv import GPSConv
+from torch_geometric.data import Data
+
+from adabelief_pytorch import AdaBelief
+
+class GPSTF(nn.Module):
+    def __init__(self, 
+                 input_dim, output_dim, 
+                 heads=1) -> None:
+        super(GPSTF, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.heads = heads
+        self.emb = nn.Linear(self.input_dim, self.output_dim)
+        self.conv = GPSConv(
+            channels = self.output_dim,
+            conv = None,
+            heads = self.heads
+        )
+
+    def forward(self, x, edge_index) -> torch.Tensor:
+        x = self.emb(x)
+        x = self.conv(x, edge_index)
+        
+        return x
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Run encoder')
 
-    parser.add_argument('--epoches', type=int, default=1000,
+    parser.add_argument('--epoches', type=int, default=2000,
                         help='number of epoches')
     parser.add_argument('--lambdac', type=float, default=0.01,
                         help='weight for the contrastive learning') 
@@ -75,15 +111,6 @@ tissue_list_all = {
     'H6',
     'H5',
     'G19'], 
-    "scrna_lung":["BAL034", "A44-LNG-2-SC-45N-1","ND17494","BAL027","BT1294"],
-    "scrna_kidney":["b1", "b2"],
-    "scrna_liver":["A31", "A29", "A35", "A36", "A52", "640C", "637C"],
-    "scrna_thymus":["A31", 'b5'],
-    "scrna_pbmcHealthy":[ 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'],
-    "scrna_spleen":["A52", "640C", "A36", "A31", "A29", "637C"],
-    "scrna_cerebellum":['b2', 'b4', 'b6', 'b10'], 
-    "scrna_cerebrum":['b1', 'b7', 'b8', 'b9'], 
-    "scrna_pancreas":["2017", "bTop3"]
     }
 
 args = parse_args()
@@ -113,105 +140,96 @@ for item in tissue_list_all.keys():
             print(correlation.shape)
             print(pd_adata_new.shape)
             adata = sc.AnnData(pd_adata_new)
-            
-            masked_data = generate_masked_data(adata.X)
 
             adata_new = adata.copy()
             edges_new = np.array([np.nonzero(correlation.values)[0],np.nonzero(correlation.values)[1]])
             graph = data.Data(x=torch.FloatTensor(adata_new.X.copy()), edge_index=torch.FloatTensor(edges_new).long())
-            graph.maskedata = torch.FloatTensor(masked_data)
-            
-            vis = nx.from_pandas_adjacency(correlation)
-            graph_networkx_list.append(vis)
-            
+
+            vis = to_networkx(graph)
             graph.gene_list = pd_adata_new.index
             graph.show_index = tissue +"__" + str(i)
-            
+
             graph_list.append(graph)
             label_list.append(tissue)
             
             count +=1
 
 
-    class GCNEncoder_Multiinput(torch.nn.Module):
+    class MLPEncoder_Multiinput(torch.nn.Module):
         def __init__(self, out_channels, graph_list, label_list):
-            super(GCNEncoder_Multiinput, self).__init__()
-            self.activ = nn.Mish(inplace=True)
-        
+            super(MLPEncoder_Multiinput, self).__init__()
+            self.activ = nn.Mish()
+            
             conv_dict = {}
-            conv_dict1 = {}
             for i in graph_list:
                 conv_dict[i.show_index] = nn.Linear(i.x.shape[1], out_channels*4)
             self.convl1 = nn.ModuleDict(conv_dict)
-            self.convl2 = nn.ModuleDict(conv_dict1)
-                
+            
         def forward(self, x, edge_index, show_index):
             x = self.convl1[show_index](x)
             x = self.activ(x)
             return x
-        
-    class GCNEncoder_Commoninput(torch.nn.Module):
+
+    class MLPEncoder_Commoninput(torch.nn.Module):
         def __init__(self, out_channels, graph_list, label_list):
-            super(GCNEncoder_Commoninput, self).__init__()
-            self.activ = nn.Mish(inplace=True)
+            super(MLPEncoder_Commoninput, self).__init__()
+            self.activ = nn.Mish()
             
             conv_dict_l2 = {}
             conv_dict_l3 = {}
-            conv_dict_l4 = {}
             tissue_specific_list = list(set(label_list))
             
             for i in tissue_specific_list:
                 conv_dict_l2[i] = nn.Linear(out_channels*4, out_channels*2)
                 conv_dict_l3[i] = nn.Linear(out_channels*2, out_channels)
-                conv_dict_l4[i] = nn.Linear(out_channels*4, out_channels)
-                
             self.convl2 = nn.ModuleDict(conv_dict_l2)
             self.convl3 = nn.ModuleDict(conv_dict_l3)
-            self.convl4 = nn.ModuleDict(conv_dict_l4)
+            
+        
+        def get_weight(self, show_index):
+            return self.convl2[show_index.split('__')[0]].state_dict(), self.convl3[show_index.split('__')[0]].state_dict()
+                
             
         def forward(self, x, edge_index, show_index):
-            x_inp = x
             x = self.convl2[show_index.split('__')[0]](x)
             x = self.activ(x)
-            x = self.convl3[show_index.split('__')[0]](x)
-            return x 
+            return self.convl3[show_index.split('__')[0]](x)
         
+
     class MLP_edge_Decoder(torch.nn.Module):
         def __init__(self, in_channels, out_channels, graph_list):
             super(MLP_edge_Decoder, self).__init__()
             
             dec_dict = {}
-            
-            self.activ = nn.Mish(inplace=True)
             for i in graph_list:
                 dec_dict[i.show_index] = torch.nn.Sequential(
-                                                nn.Linear(in_channels,  in_channels*2)
-                                                , self.activ,
-                                                nn.Linear(in_channels*2,  in_channels*4)
-                                                , self.activ,
-                                                nn.Linear(in_channels*4,  i.x.shape[1])
+                                                nn.Linear(in_channels,  out_channels)
+                                                , nn.Mish(),
+                                                nn.Linear(out_channels,  out_channels) 
+                                                ,nn.Mish(),
+                                                nn.Linear(out_channels,  out_channels)
                                                 )
             self.MLP = nn.ModuleDict(dec_dict)
             
         def forward(self, x, show_index):
             x = self.MLP[show_index](x)
-            return x
+            return torch.sigmoid(x)
 
 
 
     for seed in range(0, 10):
         set_seed(seed)
-        gene_encoder_is = GCNEncoder_Multiinput(32, graph_list, label_list).to(device)
-        gene_encoder_com =  GCNEncoder_Commoninput(32, graph_list, label_list).to(device)
+        gene_encoder_is = MLPEncoder_Multiinput(32, graph_list, label_list).to(device)
+        gene_encoder_com = MLPEncoder_Commoninput(32, graph_list, label_list).to(device)
 
-        gene_decoder = MLP_edge_Decoder(32, 32 ,graph_list).to(device)
+        gene_decoder = MLP_edge_Decoder(1000,1000,graph_list).to(device)
 
-        optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=5e-4)
-        optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=5e-4)
+        optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=1e-4)
+        optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=1e-4)
 
-        optimizer_dec2 = torch.optim.Adam(gene_decoder.parameters(), lr=1e-3)
+        optimizer_dec2 = torch.optim.Adam(gene_decoder.parameters(), lr=5e-4)
 
-        loss_f = nn.MSELoss()
+        loss_f = nn.BCELoss()
 
         
         # Contrastive learning
@@ -220,7 +238,7 @@ for item in tissue_list_all.keys():
         graph_index_list = [item for item in range(0, len(graph_list))]
         edge_adj_list = [torch.FloatTensor(cor_list[i].values).to(device) for i in graph_index_list]
 
-        for epoch in range(1000):
+        for epoch in range(2000):
             loss = 0.
             for i in range(0,len(graph_index_list)):
                 
@@ -233,10 +251,15 @@ for item in tissue_list_all.keys():
                 x = graph.maskedata.to(device)
                 
                 train_pos_edge_index = graph.edge_index.to(device)
-                x = gene_encoder_is(x, train_pos_edge_index,  graph.show_index)
+                x = gene_encoder_is(x, train_pos_edge_index, graph.show_index)
                 z = gene_encoder_com(x, train_pos_edge_index, graph.show_index)
-                        
-                loss = loss_f(gene_decoder(z, graph.show_index), graph.x.to(device)) 
+
+                edge_adj = torch.FloatTensor(cor_list[i].values).to(device)
+
+                adj = torch.matmul(z, z.t())
+                edge_reconstruct = gene_decoder(adj, graph.show_index)
+
+                loss = loss_f(edge_reconstruct.flatten(), edge_adj.flatten())
 
                 if epoch % 200 ==0:
                     print(loss.item())
@@ -245,6 +268,7 @@ for item in tissue_list_all.keys():
                     
                 optimizer_enc_is.step()
                 optimizer_enc_com.step()
+                optimizer_dec2.step()
 
             print("epoch finish")
 
@@ -291,4 +315,4 @@ for item in tissue_list_all.keys():
         adata.obs['tissue_new'] = [i.split("__")[0] for i in adata.obs['tissue']]
 
         finalname = str(args.lr1) + str(args.lr2) + str(args.epoches)
-        adata.write_h5ad(f"mae_benchmark/{tissue.split('_')[1]}_umi_mae_{seed}.h5ad")
+        adata.write_h5ad(f"mae_benchmark/{tissue.split('_')[1]}_umi_wsmaenew_{seed}.h5ad")

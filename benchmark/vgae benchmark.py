@@ -165,8 +165,8 @@ for item in tissue_list_all.keys():
 
         print(f"Let's use {torch.cuda.device_count()} GPUs!")
 
-        optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=1e-4)
-        optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=1e-4)
+        optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=1e-3)
+        optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=1e-3)
 
 
         # Contrastive learning
@@ -174,7 +174,7 @@ for item in tissue_list_all.keys():
         gene_encoder_is.train()
         gene_encoder_com.train()
 
-        for epoch in range(2000):
+        for epoch in range(3000):
             loss = 0.
             for i in range(0,len(graph_index_list)):
                 
