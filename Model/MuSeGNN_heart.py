@@ -90,6 +90,7 @@ cor_list = []
 label_list = []
 graph_networkx_list = []
 count = 0
+gene_length = 0
 
 for tissue in tissue_list.keys():
     for i in tissue_list[tissue]:
@@ -104,6 +105,7 @@ for tissue in tissue_list.keys():
         print(correlation.shape)
         print(pd_adata_new.shape)
         adata = sc.AnnData(pd_adata_new)
+        gene_length = len(adata)
 
         adata_new = adata.copy()
         edges_new = np.array([np.nonzero(correlation.values)[0],np.nonzero(correlation.values)[1]])
@@ -191,7 +193,7 @@ class MLP_edge_Decoder(torch.nn.Module):
 gene_encoder_is = GCNEncoder_Multiinput(args.dim, graph_list, label_list).to(device)
 gene_encoder_com =  GCNEncoder_Commoninput(args.dim, graph_list, label_list).to(device)
 
-gene_decoder = MLP_edge_Decoder(1000,1000,graph_list).to(device)
+gene_decoder = MLP_edge_Decoder(gene_length, gene_length ,graph_list).to(device)
 
 optimizer_enc_is = torch.optim.Adam(gene_encoder_is.parameters(), lr=args.lr1)
 optimizer_enc_com = torch.optim.Adam(gene_encoder_com.parameters(), lr=args.lr1)
