@@ -1,4 +1,4 @@
-# Codes for paper: Learning Unified Gene Representation From Multimodal Biological Graph Data
+# Codes for paper: MuSe-GNN: Learning Unified Gene Representation From Multimodal Biological Graph Data
 
 
 In this repository, we have four folders with different functions. The sequence of code running for our model should follow this order: 
