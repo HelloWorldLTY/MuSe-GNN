@@ -3,7 +3,7 @@
 
 In this repository, we have four folders with different functions. The sequence of code running for our model should follow this order: 
 
-Graph construction -> model ->benchmark
+Graph construction -> Model ->benchmark
 
 ## Datasets
 
