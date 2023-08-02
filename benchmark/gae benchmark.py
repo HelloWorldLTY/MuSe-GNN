@@ -139,7 +139,6 @@ for item in tissue_list_all.keys():
 
     
     loss_f = nn.BCEWithLogitsLoss()
-    lambda_infonce = 0.01
 
 
     for seed in range(0,10):

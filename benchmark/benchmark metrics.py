@@ -128,18 +128,6 @@ def calculate_common_gene_propertion(adata):
         
     return full_score
 
-# metric 6: Calculate cluster propertion
-def calculate_common_gene_cluster_propertion(adata):
-    tissue_list = []
-    for i in list(set(adata.obs['tissue'])):
-        tissue_list.append(list(adata[adata.obs['tissue'] == i].obs['gene']))
-        
-    common_gene_list = set(tissue_list[0]).intersection(*tissue_list[1:])
-    adata_new = adata[[True if i in common_gene_list else False for i in adata.obs['gene']]]
-
-    result = len(set(adata_new.obs['leiden']))/len(set(adata.obs['leiden']))
-    return result
-
 # Helper function: Jaccard score for genes in different graphs.
 def calculate_overlap(G1,G2,g1,g2):
     G1_neg = list(G1.neighbors(g1))
@@ -149,7 +137,7 @@ def calculate_overlap(G1,G2,g1,g2):
     
     return overlap_score
 
-# metric 7: Calculate neighbor genes' overlap
+# metric 6: Calculate neighbor genes' overlap
 def calculate_common_neighbor_ovarlap(adata, cor_list):
     output_value = 0
     for i in list(set(adata.obs['leiden'])):
@@ -188,14 +176,13 @@ def calculate_metric(adata, cor_list):
     ilisi = calculate_iLISI(adata)
     gc = calculate_graph_connectivity(adata)
     
-    percp = calculate_common_gene_cluster_propertion(adata)
     
     ratio = calculate_common_gene_propertion(adata)
     
     ovl = calculate_common_neighbor_ovarlap(adata, cor_list)
     
-    df = pd.DataFrame(np.array([asw,AUC,ilisi,gc,percp,ratio, ovl]))
-    df.index = ['ASW', 'AUC', 'iLISI', 'GC','Common Prop cluster','Common ratio', 'share overlap']
+    df = pd.DataFrame(np.array([asw,AUC,ilisi,gc,ratio, ovl]))
+    df.index = ['ASW', 'AUC', 'iLISI', 'GC', 'Common ratio', 'share overlap']
     print(df)
     return df
 

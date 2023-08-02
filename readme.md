@@ -1,9 +1,9 @@
-# Codes for paper: Learning Unified Gene Representation From Multimodal Biological Graph Data
+# Codes for paper: MuSe-GNN: Learning Unified Gene Representation From Multimodal Biological Graph Data
 
 
 In this repository, we have four folders with different functions. The sequence of code running for our model should follow this order: 
 
-Graph construction -> model ->benchmark
+Graph construction -> Model ->benchmark
 
 ## Datasets
 
@@ -26,7 +26,7 @@ python MuSeGNN_heart.py
 
 ## Benchmark
 
-This folder includes the benchmark functions we used for our model. Please check benchmark heart datasets.ipynb as a simple tutorial.
+This folder includes the benchmark metrics and baseline models we used for our this paper. Please check benchmark metrics.py as a simple tutorial.
 
 ## Analysis
 
