@@ -9,6 +9,10 @@ Graph construction -> Model ->benchmark
 
 This folder contains the download links of our used datasets. Before running our codes, please download the datasets based on these links.
 
+## Demodata
+
+This folder contains our gene embeddings from different techniques and tissues.
+
 ## Graph construction
 
 This folder contrains the codes we used to generate graph structure data, which contain gene expression profiles and co-expression network. For scRNA-seq data, please directly run scRNA_preprocessing.ipynb. For scATAC-seq data, please run scATAC_preprocessing.ipynb based on the gene activity matrix of scATAC-seq data. For spatial transcriptomics data, please run spatial_sparkx.ipynb and spatial_preprocessing.ipynb to generate spatial co-expression network and augumented data for the training process.

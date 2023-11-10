@@ -403,4 +403,4 @@ adata.obs['tissue_new'] = [i.split("__")[0] for i in adata.obs['tissue']]
 
 
 # Output gene embeddings
-adata.write_h5ad("heart_global/all_umi_musegnn.h5ad")
+adata.write_h5ad("alldata_global/all_umi_musegnn.h5ad")
