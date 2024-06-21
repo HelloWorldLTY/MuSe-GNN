@@ -7,7 +7,7 @@ Graph construction -> Model ->benchmark
 
 ## Datasets
 
-This folder contains the download links of our used datasets. Before running our codes, please download the datasets based on these links.
+This folder contains the download links of our used datasets. Before running our codes, please download the datasets based on these links. We update the link with a new file and validate the access of these links.
 
 ## Demodata
 
